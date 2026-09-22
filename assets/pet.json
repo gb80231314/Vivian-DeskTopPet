@@ -1,0 +1,751 @@
+{
+  "name": "Q版Vivian",
+  "description": "Vivian 桌面宠物（举臂挥手 / 失败叹气 / CPU 情绪联动 / 自然眨眼 / wink 提醒 / 语音包）",
+  "author": "Louis_Qi",
+  "credit": "Designed by Louis_Qi for Vivian",
+  "version": "1.0.2",
+  "spriteVersionNumber": 7,
+  "eyeTracks": {
+    "idle": [
+      [
+        78,
+        81,
+        116,
+        80
+      ],
+      [
+        79,
+        82,
+        117,
+        81
+      ],
+      [
+        79,
+        83,
+        117,
+        82
+      ],
+      [
+        79,
+        84,
+        117,
+        83
+      ],
+      [
+        80,
+        84,
+        118,
+        83
+      ],
+      [
+        79,
+        84,
+        117,
+        83
+      ],
+      [
+        79,
+        83,
+        117,
+        82
+      ],
+      [
+        79,
+        82,
+        117,
+        81
+      ],
+      [
+        78,
+        81,
+        116,
+        80
+      ],
+      [
+        77,
+        80,
+        115,
+        79
+      ],
+      [
+        77,
+        79,
+        115,
+        78
+      ],
+      [
+        77,
+        78,
+        115,
+        77
+      ],
+      [
+        76,
+        78,
+        114,
+        77
+      ],
+      [
+        77,
+        78,
+        115,
+        77
+      ],
+      [
+        77,
+        79,
+        115,
+        78
+      ],
+      [
+        77,
+        80,
+        115,
+        79
+      ]
+    ],
+    "idle-plain": [
+      [
+        77,
+        81,
+        114,
+        80
+      ],
+      [
+        77,
+        82,
+        114,
+        81
+      ],
+      [
+        77,
+        82,
+        114,
+        81
+      ],
+      [
+        77,
+        83,
+        114,
+        82
+      ],
+      [
+        77,
+        83,
+        114,
+        82
+      ],
+      [
+        77,
+        83,
+        114,
+        82
+      ],
+      [
+        77,
+        82,
+        114,
+        81
+      ],
+      [
+        77,
+        82,
+        114,
+        81
+      ],
+      [
+        77,
+        81,
+        114,
+        80
+      ],
+      [
+        77,
+        80,
+        114,
+        79
+      ],
+      [
+        77,
+        80,
+        114,
+        79
+      ],
+      [
+        77,
+        79,
+        114,
+        78
+      ],
+      [
+        77,
+        79,
+        114,
+        78
+      ],
+      [
+        77,
+        79,
+        114,
+        78
+      ],
+      [
+        77,
+        80,
+        114,
+        79
+      ],
+      [
+        77,
+        80,
+        114,
+        79
+      ]
+    ],
+    "review": [
+      [
+        77,
+        81,
+        114,
+        80
+      ],
+      [
+        78,
+        80,
+        115,
+        79
+      ],
+      [
+        78,
+        79,
+        115,
+        78
+      ],
+      [
+        79,
+        80,
+        116,
+        77
+      ],
+      [
+        79,
+        80,
+        116,
+        77
+      ],
+      [
+        79,
+        80,
+        116,
+        77
+      ],
+      [
+        78,
+        79,
+        115,
+        78
+      ],
+      [
+        78,
+        80,
+        115,
+        79
+      ],
+      [
+        77,
+        81,
+        114,
+        80
+      ],
+      [
+        76,
+        80,
+        113,
+        79
+      ],
+      [
+        76,
+        79,
+        113,
+        79
+      ],
+      [
+        75,
+        79,
+        112,
+        79
+      ],
+      [
+        75,
+        78,
+        112,
+        79
+      ],
+      [
+        75,
+        79,
+        112,
+        79
+      ],
+      [
+        76,
+        79,
+        113,
+        79
+      ],
+      [
+        76,
+        80,
+        113,
+        79
+      ]
+    ],
+    "waiting": [
+      [
+        77,
+        81,
+        114,
+        80
+      ],
+      [
+        77,
+        81,
+        114,
+        80
+      ],
+      [
+        77,
+        81,
+        113,
+        80
+      ],
+      [
+        76,
+        80,
+        113,
+        79
+      ],
+      [
+        76,
+        81,
+        113,
+        79
+      ],
+      [
+        76,
+        81,
+        113,
+        78
+      ],
+      [
+        76,
+        81,
+        113,
+        78
+      ],
+      [
+        76,
+        81,
+        113,
+        78
+      ],
+      [
+        76,
+        80,
+        113,
+        77
+      ],
+      [
+        76,
+        79,
+        113,
+        76
+      ],
+      [
+        76,
+        79,
+        113,
+        76
+      ],
+      [
+        76,
+        79,
+        113,
+        76
+      ],
+      [
+        76,
+        77,
+        113,
+        75
+      ],
+      [
+        76,
+        78,
+        113,
+        77
+      ],
+      [
+        77,
+        79,
+        113,
+        78
+      ],
+      [
+        77,
+        79,
+        114,
+        78
+      ]
+    ],
+    "waving": [
+      [
+        77,
+        81,
+        114,
+        80
+      ],
+      [
+        77,
+        81,
+        114,
+        80
+      ],
+      [
+        77,
+        81,
+        114,
+        80
+      ],
+      [
+        77,
+        81,
+        114,
+        80
+      ],
+      [
+        77,
+        81,
+        114,
+        80
+      ],
+      [
+        77,
+        81,
+        114,
+        80
+      ],
+      [
+        77,
+        81,
+        114,
+        80
+      ],
+      [
+        77,
+        81,
+        114,
+        80
+      ],
+      [
+        77,
+        81,
+        114,
+        80
+      ],
+      [
+        77,
+        81,
+        114,
+        80
+      ],
+      [
+        77,
+        81,
+        114,
+        80
+      ],
+      [
+        77,
+        81,
+        114,
+        80
+      ],
+      [
+        77,
+        81,
+        114,
+        80
+      ],
+      [
+        77,
+        81,
+        114,
+        80
+      ],
+      [
+        77,
+        81,
+        114,
+        80
+      ],
+      [
+        77,
+        81,
+        114,
+        80
+      ]
+    ]
+  },
+  "sprite": {
+    "image": "spritesheet.webp",
+    "cell": {
+      "width": 192,
+      "height": 208
+    },
+    "cols": 16,
+    "rows": 14,
+    "atlasWidth": 3072,
+    "atlasHeight": 2912
+  },
+  "animations": [
+    {
+      "name": "idle",
+      "label": "待机(捧花)",
+      "row": 0,
+      "frameCount": 16,
+      "fps": 4,
+      "repeat": true,
+      "loop": true
+    },
+    {
+      "name": "running-right",
+      "label": "向右跑",
+      "row": 1,
+      "frameCount": 16,
+      "fps": 6,
+      "repeat": true,
+      "loop": true
+    },
+    {
+      "name": "running-left",
+      "label": "向左跑",
+      "row": 2,
+      "frameCount": 16,
+      "fps": 6,
+      "repeat": true,
+      "loop": true
+    },
+    {
+      "name": "waving",
+      "label": "挥手(举臂)",
+      "row": 3,
+      "frameCount": 16,
+      "fps": 6,
+      "repeat": true,
+      "loop": true
+    },
+    {
+      "name": "jumping",
+      "label": "跳跃",
+      "row": 4,
+      "frameCount": 16,
+      "fps": 6,
+      "repeat": true,
+      "loop": true
+    },
+    {
+      "name": "failed",
+      "label": "失败(叹气)",
+      "row": 5,
+      "frameCount": 16,
+      "fps": 4,
+      "repeat": true,
+      "loop": true
+    },
+    {
+      "name": "waiting",
+      "label": "等待",
+      "row": 6,
+      "frameCount": 16,
+      "fps": 6,
+      "repeat": true,
+      "loop": true
+    },
+    {
+      "name": "running",
+      "label": "工作中",
+      "row": 7,
+      "frameCount": 16,
+      "fps": 6,
+      "repeat": true,
+      "loop": true
+    },
+    {
+      "name": "review",
+      "label": "审阅",
+      "row": 8,
+      "frameCount": 16,
+      "fps": 6,
+      "repeat": true,
+      "loop": true
+    },
+    {
+      "name": "angry",
+      "label": "生气",
+      "row": 11,
+      "frameCount": 16,
+      "fps": 8,
+      "repeat": true,
+      "loop": true
+    },
+    {
+      "name": "idle-plain",
+      "label": "安静待机",
+      "row": 12,
+      "frameCount": 16,
+      "fps": 4,
+      "repeat": true,
+      "loop": true
+    },
+    {
+      "name": "wink",
+      "label": "眨眼",
+      "row": 13,
+      "frameCount": 16,
+      "fps": 4,
+      "repeat": true,
+      "loop": true
+    }
+  ],
+  "gazes": [
+    {
+      "name": "gaze-000.0",
+      "label": "up",
+      "angle": 0.0,
+      "row": 9,
+      "col": 0,
+      "type": "gaze"
+    },
+    {
+      "name": "gaze-022.5",
+      "label": "up-right",
+      "angle": 22.5,
+      "row": 9,
+      "col": 1,
+      "type": "gaze"
+    },
+    {
+      "name": "gaze-045.0",
+      "label": "up-right",
+      "angle": 45.0,
+      "row": 9,
+      "col": 2,
+      "type": "gaze"
+    },
+    {
+      "name": "gaze-067.5",
+      "label": "up-right",
+      "angle": 67.5,
+      "row": 9,
+      "col": 3,
+      "type": "gaze"
+    },
+    {
+      "name": "gaze-090.0",
+      "label": "right",
+      "angle": 90.0,
+      "row": 9,
+      "col": 4,
+      "type": "gaze"
+    },
+    {
+      "name": "gaze-112.5",
+      "label": "down-right",
+      "angle": 112.5,
+      "row": 9,
+      "col": 5,
+      "type": "gaze"
+    },
+    {
+      "name": "gaze-135.0",
+      "label": "down-right",
+      "angle": 135.0,
+      "row": 9,
+      "col": 6,
+      "type": "gaze"
+    },
+    {
+      "name": "gaze-157.5",
+      "label": "down-right",
+      "angle": 157.5,
+      "row": 9,
+      "col": 7,
+      "type": "gaze"
+    },
+    {
+      "name": "gaze-180.0",
+      "label": "down",
+      "angle": 180.0,
+      "row": 10,
+      "col": 0,
+      "type": "gaze"
+    },
+    {
+      "name": "gaze-202.5",
+      "label": "down-left",
+      "angle": 202.5,
+      "row": 10,
+      "col": 1,
+      "type": "gaze"
+    },
+    {
+      "name": "gaze-225.0",
+      "label": "down-left",
+      "angle": 225.0,
+      "row": 10,
+      "col": 2,
+      "type": "gaze"
+    },
+    {
+      "name": "gaze-247.5",
+      "label": "down-left",
+      "angle": 247.5,
+      "row": 10,
+      "col": 3,
+      "type": "gaze"
+    },
+    {
+      "name": "gaze-270.0",
+      "label": "left",
+      "angle": 270.0,
+      "row": 10,
+      "col": 4,
+      "type": "gaze"
+    },
+    {
+      "name": "gaze-292.5",
+      "label": "up-left",
+      "angle": 292.5,
+      "row": 10,
+      "col": 5,
+      "type": "gaze"
+    },
+    {
+      "name": "gaze-315.0",
+      "label": "up-left",
+      "angle": 315.0,
+      "row": 10,
+      "col": 6,
+      "type": "gaze"
+    },
+    {
+      "name": "gaze-337.5",
+      "label": "up-left",
+      "angle": 337.5,
+      "row": 10,
+      "col": 7,
+      "type": "gaze"
+    }
+  ]
+}
