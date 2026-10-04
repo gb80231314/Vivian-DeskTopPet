@@ -53,7 +53,7 @@ def build_pet_config(
     name: str = "DesktopBuddy",
     description: str = "Q版卡通桌面宠物",
     author: str = "",
-    version: str = "1.0.2",
+    version: str = "1.0.5",
 ) -> dict:
     animations = []
     for state in ANIMATION_STATES:
@@ -89,7 +89,7 @@ def save_pet_config(
     name: str = "DesktopBuddy",
     description: str = "Q版卡通桌面宠物",
     author: str = "",
-    version: str = "1.0.2",
+    version: str = "1.0.5",
 ) -> dict:
     config = build_pet_config(name=name, description=description, author=author, version=version)
     with open(path, "w", encoding="utf-8") as f:

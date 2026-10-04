@@ -255,7 +255,7 @@ def main():
   python -m hatch_pet validate --image output/spritesheet.webp --config output/pet.json
         """,
     )
-    parser.add_argument("--version", action="version", version="hatch-pet 1.0.2")
+    parser.add_argument("--version", action="version", version="hatch-pet 1.0.5")
 
     subparsers = parser.add_subparsers(dest="command", help="可用命令")
 
@@ -264,7 +264,7 @@ def main():
     gen.add_argument("--name", default="DesktopBuddy", help="宠物名称")
     gen.add_argument("--description", help="宠物描述")
     gen.add_argument("--author", default="", help="作者")
-    gen.add_argument("--version", default="1.0.2", help="版本号")
+    gen.add_argument("--version", default="1.0.5", help="版本号")
     gen.add_argument("--frames-dir", help="帧图片目录（可选）")
     gen.add_argument("--output", "-o", default="output", help="输出目录")
     gen.add_argument("--package", help="打包名称（不含扩展名）")

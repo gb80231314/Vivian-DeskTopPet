@@ -63,7 +63,7 @@ def _auto_attach_daemon():
 
 MCP_PROTOCOL_VERSION = "2024-11-05"
 SERVER_NAME = "desktop-buddy"
-SERVER_VERSION = "1.0.2"
+SERVER_VERSION = "1.0.5"
 
 TOOLS = [
     {

@@ -1,12 +1,18 @@
 # Vivian 桌面宠物 🌸
 
-> **Version 1.0.0** | **Designed by Louis_Qi for Vivian**
+> **Version 1.0.9** | **Designed by Louis_Qi for Vivian**
 
 一只会看你心情的 Q 版桌面宠物。会自然地随机眨眼，电脑空闲时捧着白雏菊开心微笑，CPU 忙疯时
-抱臂生气，长时间不理她还会朝你叹气，自定义语音包让她开口说话。
+抱臂生气，长时间不理她还会朝你叹气；自定义语音包让她开口说话，说出"Hi, Vivian"能唤醒她，
+接入大模型 API 后还能多轮聊天；电脑放音乐时她会跟着节奏即兴起舞——六组舞步随机切换。
 
 **多平台**：同一份代码可在 Windows 与 macOS 上运行。Windows 直接下载安装包；macOS 在 Mac
 上一键构建 `.app` 与 `.dmg`。
+
+**开源地址**：
+
+- GitHub：<https://github.com/gb80231314/Vivian-DeskTopPet>
+- Gitee：<https://gitee.com/Louis-QI/Vivian-DeskTopPet>
 
 ---
 
@@ -24,11 +30,15 @@
 | 👋 **举臂挥手** | 右臂高举过头挥动打招呼（肩关节圆盖衔接，自然） |
 | 😮‍💨 **失败叹气** | 吸气上挺 → 呼气下沉 + 卡通叹气云飘散 + "唉……先叹口气……" |
 | 🎵 **语音包** | 按事件自动播放语音（打招呼/开心/生气/wink/失败/挥手），内置"甜嗓默认"包，支持自定义语音包与音量调节 |
+| 🎙️ **语音交互** | 唤醒词 **"Hi, Vivian"** 语音唤醒（本地引擎：噪声抑制 + 音节节奏匹配，托盘可一键声学校准，校准后只听你的 "Hi, Vivian"）；唤醒后随机应答（气泡+语音）；自动检测麦克风（开机未就绪自动重试），无麦克风优雅降级；设置中可接入 OpenAI 兼容模型 API 实现语音对话（选填：多轮上下文、转写/对话模型分离、一键测试连接） |
+| 💃 **音乐跳舞** | 电脑播放音乐时自动跟着节奏跳舞：**6 组舞步随机抽取**（摇摆 / 弹跳 / 扭动 / 旋转 / 跳跃 / 挥手），每 4~8 拍随机换一支、循环播放不卡顿；跳舞时鼠标悬停在她身上会暂停，移开后继续（设置中开启）。音乐检测常驻一个系统声音监听通道（约 +5~15MB 内存、CPU 极低），设置中有占用提醒，仅 Windows |
+| 💬 **气泡自适应** | Apple 通知卡片风格气泡（圆角卡片 + 主题色 + 柔和投影），自动避开屏幕边缘与任务栏，宠物在四角时自动调整方向，永不裁切 |
 | ⏱️ **自定义提醒时间** | wink 提醒触发时间 5~600 秒可调 |
 | 🎲 **行为模式** | 调皮 / 悠闲 / 好奇 / 活跃 / 关闭，随机切换动作 |
-| 🏃 **12 种动画** | 待机 / 跑动 / 挥手 / 跳跃 / 工作 / 审阅 / 生气 / 眨眼…每动画 16 帧丝滑过渡 |
+| 🏃 **12+4 种动画** | 12 组手绘动画（待机 / 跑动 / 挥手 / 跳跃 / 工作 / 审阅 / 生气 / 眨眼…每动画 16 帧丝滑过渡）+ 启动时程序化合成的 4 组高帧率舞蹈动画（各 24 帧、12~14fps） |
 | 🎨 **软边贴合** | 水彩软边无描边风格，可与桌面背景自然融合（可在设置中调整） |
-| ⚙️ **完整设置面板** | 右键宠物 → ⚙️ 设置 |
+| 🧚 **更换形象向导** | 分步教学 + 自动换装：选一张角色图、挑一种 Q 版风格（实时预览），后台自动生成 12 组 × 16 帧全套动画（弹窗进度条），完成后**无需重启立即换装**；一键恢复默认 |
+| ⚙️ **完整设置面板** | 右键宠物 → ⚙️ 设置（黑绿黄蓝像素风 UI，赛博朋克 × 可爱，各分区带像素 logo） |
 | 🚀 **开机自启** | 设置面板一键开关（Windows 注册表 / macOS LaunchAgent） |
 | 🌙 **托盘常驻** | 关闭窗口不退出，托盘图标可再召唤 |
 | 🖥️ **跨平台** | 同一份代码，Windows / macOS 行为一致 |
@@ -52,8 +62,10 @@
 
 ⚠️ PyInstaller 不能交叉编译——必须在 Mac 上构建。
 
-最快路径：
-1. 把项目目录（含 `app/`、`scripts/`、`assets/`）拷到 Mac
+最快路径（二选一）：
+1. Windows 上先 `python scripts/build_source_dmg.py` 生成源码 DMG
+   （`release/Vivian-Pet-Source-V1.0.5.dmg`），拷到 Mac 挂载；
+   或直接把项目目录（含 `app/`、`scripts/`、`assets/`）拷到 Mac
 2. 在 Mac 上执行：
    ```bash
    cd scripts
@@ -67,10 +79,10 @@
 
 ## 🎮 使用
 
-- **左键短按**：弹出动画选择菜单
+- **左键短按**：弹出动画选择菜单（含程序化合成的舞蹈动作：摇摆 / 弹跳 / 扭动 / 旋转）
 - **左键拖拽**：移动宠物位置
-- **右键**：扇形菜单（跟随 / 观察 / 活动 / 设置 / 隐藏 / 退出）
-- **右键 → ⚙️ 设置**：缩放 / 行为模式 / 跟随 / 观察（二选一）/ 开机启动 / 情绪联动 / wink / 提醒时间 / 语音包 / 边缘处理 / 关于
+- **右键**：扇形菜单（跟随 / 观察 / 活动 / 设置 / 隐藏 / 退出）——Apple 风格磨砂圆钮 + SF 风格单色线性图标，悬停系统蓝高亮；Windows 上经 UpdateLayeredWindow 呈现逐像素透明，macOS 上经原生透明 NSWindow，两平台观感一致
+- **右键 → ⚙️ 设置**：缩放 / 行为模式 / 跟随 / 观察（二选一）/ 开机启动 / 情绪联动 / wink / 提醒时间 / 音乐跳舞 / 语音包 / 边缘处理 / 关于（毛玻璃 UI）
 
 ### 自定义语音包
 
@@ -100,8 +112,15 @@ voicepacks/
 ```
 .
 ├── app/                       # 应用源码
-│   ├── qpet_app.py            # 应用入口（设置面板 / 情绪联动 / wink / gaze / 语音包）
+│   ├── qpet_app.py            # 应用入口（设置面板/情绪联动/wink/音乐跳舞/毛玻璃 UI）
+│   ├── voice_interact.py      # 语音交互（唤醒引擎/多轮对话/模型 API 客户端）
 │   └── hatch_pet/             # 核心渲染引擎模块
+│       ├── desktop_renderer.py  # 渲染管线（Canvas 60FPS / 气泡 / 托盘）
+│       ├── music_dance.py       # 音乐检测（ctypes WASAPI 回环 + 节拍判定）
+│       ├── appearance_wizard.py # 更换形象向导（分步教学/生成进度/自动换装）
+│       ├── pixel_ui.py          # 像素风 UI 素材（四色 logo/赛博像素壁纸）
+│       ├── glass_ui.py          # 毛玻璃/窗口动画助手
+│       └── …                    # 动画引擎 / 随机行为 / 状态监听等
 ├── assets/                    # 运行时资源
 │   ├── spritesheet.png        # 精灵图（3072×2912）
 │   ├── spritesheet.webp       # 精灵图（webp 压缩版）
@@ -111,8 +130,9 @@ voicepacks/
 │       └── 甜嗓默认/
 ├── scripts/                   # 构建脚本
 │   ├── build_pet_v7.py        # 精灵图生成脚本（含眼睛逐帧跟踪）
-│   ├── build-windows.bat      # Windows 一键打包
+│   ├── build-windows.bat      # Windows 一键打包（exe/绿色版/安装包）
 │   ├── build_mac.py           # macOS 一键打包
+│   ├── build_source_dmg.py    # Windows 上生成 macOS 源码 DMG
 │   ├── qpet_setup.iss         # Inno Setup 安装脚本
 │   └── raw_assets/            # 原始素材（AI 生成的角色参考图等）
 ├── docs/                      # 文档
@@ -124,7 +144,7 @@ voicepacks/
 ├── release/                   # 打包产物（git-ignored）
 │   ├── QPet-Setup.exe
 │   ├── Vivian-Pet-Portable-Windows.zip
-│   └── Vivian-Pet.dmg
+│   └── Vivian-Pet-Source-V1.0.5.dmg
 ├── README.md                  # 本文件
 ├── CHANGELOG.md               # 更新日志
 └── INSTALL.md                 # 安装说明
@@ -149,7 +169,7 @@ voicepacks/
 │                         │      行为引擎层                          │
 │   ┌─────────────┐  ┌────┴──────┐  ┌─────────────────────────┐    │
 │   │  情绪联动    │  │  动画调度  │  │  触发器 / 提醒            │    │
-│   │  (CPU/Mood) │  │  FSM/队列 │  │  (wink/random/event)     │    │
+│   │  (CPU/Mood) │  │  FSM/队列 │  │  (wink/random/event/beat) │    │
 │   └─────────────┘  └────────────┘  └─────────────────────────┘    │
 ├──────────────────────────────────────────────────────────────────┤
 │                          渲染管线层                                │
@@ -179,9 +199,9 @@ voicepacks/
 
 | 层 | 模块 | 职责 |
 |----|------|------|
-| 用户交互 | `app/qpet_app.py` + `app/hatch_pet/desktop_renderer.py` | 渲染、点击、拖拽、菜单事件 |
-| 行为引擎 | `qpet_app.py` 内的 CPU 情绪 / FSM / 随机触发器 | 决定何时切哪个动画、播哪个语音 |
-| 渲染管线 | `hatch_pet/eye_geometry.py` + `qpet_app.py` 内的 `_apply_blink / _make_gaze_frame` | 帧合成、抗锯齿、眼睑贴合、去紫边 |
+| 用户交互 | `app/qpet_app.py` + `app/hatch_pet/desktop_renderer.py` | 渲染、点击、拖拽、菜单事件、设置面板 |
+| 行为引擎 | `qpet_app.py` 内的 CPU 情绪 / FSM / 随机触发器 | 决定何时切哪个动画、播哪个语音、跳哪支舞 |
+| 渲染管线 | `qpet_app.py` 内的 `_apply_blink / _make_gaze_frame / _dance_transform` | 帧合成、抗锯齿、眼睑贴合、舞蹈帧变换、去紫边 |
 | 平台抽象 | `qpet_app.py` 顶部 `IS_WINDOWS/IS_MACOS` + `VoicePlayer` / `autorun_*` | 把 OS 差异收敛在一处，Mac 用户无需懂注册表 |
 | 资产层 | `assets/` + `scripts/build_pet_v7.py` | 离线生成的精灵图 + 配置 JSON + 资源包 |
 
@@ -222,15 +242,32 @@ voicepacks/
 
 **8. 跨平台构建链**
 - 构建脚本统一读 `scripts/raw_assets/` + 角色参考图 → `build_pet_v7.py` 生成 `assets/spritesheet.png` + `assets/pet.json`（含 `eyeTracks`）
-- Windows：`scripts/build-windows.bat` → PyInstaller `QPet.spec` → Inno Setup `qpet_setup.iss` → `release/QPet-Setup.exe`
+- Windows：`scripts/build-windows.bat` 一键完成 PyInstaller onedir 打包 → 资源拷贝 → 绿色版 zip → Inno Setup `qpet_setup.iss` 编译 `release/QPet-Setup.exe`
 - macOS：`scripts/build_mac.py` → PyInstaller `--target-arch=universal2` → Apple 拖拽美化 dmg
-- 跨平台分发：`pycdlib` 直接生成 `Vivian-Pet-Source-V1.0.0.dmg`（ISO 9660 + Joliet + Rock Ridge + UDF），Mac 端用 `hdiutil mount` 即可看到完整源码 + 构建脚本
+- 跨平台分发：Windows 上 `python scripts/build_source_dmg.py` 生成 `Vivian-Pet-Source-V1.0.5.dmg`（ISO 9660 + Joliet + Rock Ridge + UDF），Mac 端 `hdiutil mount` 挂载后按卷内 MAC-README 三步出包
+
+**9. 音乐跳舞：WASAPI 回环 + 节拍编排 + 程序化舞蹈合成**
+- 采集：ctypes 直连 WASAPI 回环（`IMMDeviceEnumerator` → `IAudioClient` 带 `AUDCLNT_STREAMFLAGS_LOOPBACK` → `IAudioCaptureClient` 轮询），系统内置 COM 接口、零第三方依赖——sounddevice 已发布版本（≤0.5.6）的 `WasapiSettings` 均不支持 `loopback` 参数，故不依赖它
+- 检测：8s 窗口最小值作自适应能底（真静音远低于音乐谷值，且不会被音乐自身抬升），快能量持续超阈值 1s 判定「在放音乐」、安静 2.5s 判定结束；瞬时能量/快能量 >1.3 且高于能底 2.5 倍判为节拍（最小间隔 0.32s）
+- 编排：动作池 6 组（摇摆/弹跳/扭动/旋转/跳跃/挥手），起舞与每次换步都随机抽取、每 4~8 拍一换；动画循环播放、不逐拍重启动画保证流畅；跳舞期间鼠标悬停暂停 / 移开继续（200ms 防抖），并与情绪联动、wink、随机行为互斥
+- 合成：启动时用 PIL 从现有素材变换出 4 组 24 帧舞蹈动画（旋转/缩放/位移 + squash & stretch，BICUBIC/LANCZOS 重采样），注册进动画表与左键菜单，失败自动回退到原生动作
+
+**10. 设置面板像素 UI（黑绿黄蓝 · 赛博朋克 × 可爱）+ 打包健壮性**
+- 程序化像素素材（`hatch_pet/pixel_ui.py`）：手绘像素矩阵 logo（Vivian 像素脸、调节滑杆、爱心、音符、麦克风、星星，NEAREST 放大保持硬边）+ 赛博像素壁纸（暗色渐变、网格点、星星闪光、霓虹天际线、像素月亮爱心）
+- 像素卡片：2px 霓虹边框（绿/黄/蓝按分区）+ 深色卡片 + 终端风输入框（暗底荧光绿文字）
+- 设置窗口可自由调整大小：卡片与按钮按窗口宽度自适应重排、壁纸按固定种子随窗口重新生成（硬边不糊）、自动记住上次尺寸；窗口淡入+上滑入场、淡出关闭
+- Tk 图像防 GC：canvas/label 的 PhotoImage 引用挂实例属性，并在窗口映射后再创建（withdraw 状态下创建会得到空白图像）
+- 打包版无控制台（`console=False`）时 `sys.stdout/stderr` 为 `None`，任何日志 formatter 调 `isatty()` 都会静默崩溃——启动入口对冻结模式做了防御，避免「双击没反应」类问题
 
 ---
 
 ## 🔄 换形象
 
-想换成另一个 Q 版角色？看 [`docs/换形象指南.md`](docs/换形象指南.md)：
+**最简单的方式**：右键宠物 → ⚙️ 设置 → 其他 → 🧚 **更换形象向导**。
+跟着指导选一张角色图、挑一种 Q 版风格，向导自动生成全套动画
+（弹窗进度条展示进度），完成后**自动换装、无需重启**，并可一键恢复默认。
+
+想深度定制（手绘逐帧精灵图、校准眼位、换语音包/图标）？看 [`docs/换形象指南.md`](docs/换形象指南.md)：
 - 精灵图规格（192×208 / 12 动画 × 16 帧）
 - 眼睛锚点校准方法
 - 语音包替换规范

@@ -590,7 +590,7 @@ def main():
         "description": "Vivian 桌面宠物（举臂挥手 / 失败叹气 / CPU 情绪联动 / 自然眨眼 / wink 提醒 / 语音包）",
         "author": "Louis_Qi",
         "credit": "Designed by Louis_Qi for Vivian",
-        "version": "1.0.2",
+        "version": "1.0.8",
         "spriteVersionNumber": 7,
         "eyeTracks": eye_tracks,
         "sprite": {"image": "spritesheet.webp", "cell": {"width": CELL_W, "height": CELL_H},

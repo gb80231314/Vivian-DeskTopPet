@@ -117,3 +117,16 @@ secrets.json
 
 *.lnk
 *:Zone.Identifier
+
+# —— V1.0.9：测试数据与测试文档不入库 ——
+scripts/_shots/
+scripts/_test_*.py
+scripts/_test_*_result.json
+scripts/_v109_result.json
+scripts/_gen_report_v109.py
+docs/*测试报告*.xlsx
+
+# —— 安装包例外：跟随版本发布上传 ——
+!release/QPet-Setup.exe
+!release/Vivian-Pet-Portable-Windows.zip
+!release/Vivian-Pet-macOS-V*.dmg

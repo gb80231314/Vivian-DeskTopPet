@@ -8,7 +8,7 @@
 
 - Python 3.10+（推荐 3.12 或 3.14）
 - 依赖：`pyinstaller`、`pillow`
-- Windows 打包需：[Inno Setup 6](https://jrsoftware.org/isinfo.php)（已集成于 `tools/InnoSetup/`）
+- Windows 打包需：[Inno Setup 6](https://jrsoftware.org/isinfo.php)（本仓库未包含，请安装到 `tools/InnoSetup/` 或修改 `build-windows.bat` 中的 `ISCC` 路径）
 - macOS 打包需：在 Mac 上 + `create-dmg`（可选）
 
 ```bash

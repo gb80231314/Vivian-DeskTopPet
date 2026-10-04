@@ -1,6 +1,7 @@
 @echo off
 REM ============================================================================
-REM  Vivian 桌面宠物 - Windows 打包脚本 (V1.0.2)
+REM  Vivian 桌面宠物 - Windows 打包脚本
+REM  版本号取自 app\qpet_app.py 的 APP_VERSION（本脚本不硬编码）
 REM  产出：scripts\dist\QPet\ + release\QPet-Setup.exe + release\Vivian-Pet-Portable-Windows.zip
 REM
 REM  需要：
@@ -19,7 +20,7 @@ set BUILD=%SCRIPTS%\build
 set RELEASE=%ROOT%\release
 set PYEXE=
 
-echo === Vivian 桌面宠物 Windows 打包 (V1.0.2) ===
+echo === Vivian 桌面宠物 Windows 打包 ===
 
 REM 1) 选 Python：优先 mysoft/python314（有 tkinter），回退到系统 python
 if exist D:\CodeTools\Mysoft\python314\python.exe (
@@ -62,7 +63,7 @@ if exist "%ISCC%" (
     cd /d "%SCRIPTS%"
     "%ISCC%" qpet_setup.iss
 ) else (
-    echo [warn] 未找到 Inno Setup (tools\InnoSetup\ISCC.exe)，跳过安装包生成
+    echo [warn] 未找到 Inno Setup，跳过安装包生成
 )
 
 echo.

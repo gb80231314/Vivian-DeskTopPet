@@ -3,7 +3,7 @@
   "description": "Vivian 桌面宠物（举臂挥手 / 失败叹气 / CPU 情绪联动 / 自然眨眼 / wink 提醒 / 语音包）",
   "author": "Louis_Qi",
   "credit": "Designed by Louis_Qi for Vivian",
-  "version": "1.0.2",
+  "version": "1.0.9",
   "spriteVersionNumber": 7,
   "eyeTracks": {
     "idle": [

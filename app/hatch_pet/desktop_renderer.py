@@ -30,6 +30,23 @@ from .status_watcher import StatusWatcher, create_watcher
 
 logger = logging.getLogger(__name__)
 
+
+class _SynthEvent:
+    """原生渲染层事件转发用的最小 Tk 事件替身。
+
+    现有拖拽/菜单处理器只读 ``x_root`` / ``y_root``（全局左上原点坐标），
+    其余字段按 Tk 事件惯例补齐。
+    """
+
+    def __init__(self, x_root, y_root):
+        self.x = 0
+        self.y = 0
+        self.x_root = x_root
+        self.y_root = y_root
+        self.num = 1
+        self.time = 0
+
+
 def get_platform() -> str:
     if sys.platform == "win32":
         return "windows"
@@ -38,7 +55,13 @@ def get_platform() -> str:
     else:
         return "linux"
 
+
 PLATFORM = get_platform()
+# 注意：PLATFORM 的值是 "macos"，而 sys.platform 的值才是 "darwin"。
+# 判断平台一律用 PLATFORM / IS_* 常量，别再直接比 "darwin"。
+IS_WINDOWS = PLATFORM == "windows"
+IS_MACOS = PLATFORM == "macos"
+IS_LINUX = PLATFORM == "linux"
 
 if PLATFORM == "windows":
     try:
@@ -50,7 +73,22 @@ if PLATFORM == "windows":
 else:
     HAS_WIN32 = False
 
-TRANSPARENT_BG = "magenta" if PLATFORM == "windows" else "systemTransparent"
+# BUG-01（详见 macos_overlay 模块 docstring）：macOS Tk 的
+# systemTransparent 画布不渲染任何 PhotoImage，宠物会整体不可见。
+# 优先用原生 NSWindow 覆盖层保持全透明；无 PyObjC 时退回彩色卡片
+# 模式（可见但非透明），保证宠物永不静默隐形。
+# macos_overlay 在所有平台都可安全导入（Windows 上仅作为帧载体工厂，
+# _frame_to_tk 的 Windows 分支同样依赖它），必须顶层无条件导入。
+from . import macos_overlay
+from . import apple_ui
+from .float_panel import FloatPanel
+
+if PLATFORM == "windows":
+    TRANSPARENT_BG = "magenta"
+    CARD_BG = None
+else:
+    TRANSPARENT_BG = "systemTransparent"
+    CARD_BG = None if macos_overlay.AVAILABLE else "#F6F5F2"
 
 _BUBBLE_THEMES = {
     "error":      {"bg": "#FFF5F5", "border": "#FF8787", "text": "#C92A2A"},
@@ -210,7 +248,7 @@ class DesktopPet:
             self.root,
             width=self.win_w,
             height=self.win_h,
-            bg=TRANSPARENT_BG,
+            bg=CARD_BG or TRANSPARENT_BG,
             highlightthickness=0,
         )
         self.canvas.pack()
@@ -218,13 +256,66 @@ class DesktopPet:
             self.win_w // 2, self.win_h // 2, anchor="center",
         )
 
+        # ---- macOS 原生渲染层（BUG-01 修复）----
+        # Tk 画布在此模式下不再负责显示（保持隐形），由 macos_overlay
+        # 的原生 NSWindow 贴在正上方显示精灵帧并转发鼠标事件。
+        self._overlay = None
+        self._overlay_pil = None
+        if IS_MACOS:
+            if macos_overlay.AVAILABLE:
+                try:
+                    self._overlay = macos_overlay.MacPetOverlay(
+                        self.win_w, self.win_h,
+                        on_event=self._overlay_event,
+                    )
+                    self._overlay.sync_position(start_x, start_y)
+                    self._overlay.show()
+                except Exception:
+                    logger.exception("原生渲染层创建失败，回退彩色卡片模式")
+                    self._overlay = None
+            if self._overlay is None:
+                logger.warning(
+                    "macOS 原生渲染层未启用（%r），回退彩色卡片模式；"
+                    "如需透明效果请安装 pyobjc-framework-Cocoa",
+                    getattr(macos_overlay, "_IMPORT_ERROR", "unavailable"),
+                )
+            else:
+                # 记录当前显示帧的 PIL 源图（原生层取像素用）：
+                # 包一层 itemconfig，孵化/眨眼/gaze 等任何直绘路径都能捕获
+                _orig_itemconfig = self.canvas.itemconfig
+
+                def _itemconfig(*args, **kw):
+                    result = _orig_itemconfig(*args, **kw)
+                    try:
+                        if args and args[0] == self.image_id:
+                            photo = kw.get("image")
+                            if photo is None and len(args) > 2:
+                                for i in range(1, len(args) - 1, 2):
+                                    if str(args[i]) == "image":
+                                        photo = args[i + 1]
+                                        break
+                            if photo is not None:
+                                src = getattr(photo, "source", None)
+                                if src is not None:
+                                    self._overlay_pil = src
+                    except Exception:
+                        pass
+                    return result
+
+                self.canvas.itemconfig = _itemconfig
+
         self.canvas.bind("<ButtonPress-1>", self._on_drag_start)
         self.canvas.bind("<B1-Motion>", self._on_drag_move)
         self.canvas.bind("<ButtonRelease-1>", self._on_drag_end)
 
         self.canvas.bind("<Button-3>", self._on_right_click)
-        if PLATFORM == "darwin":
+        if IS_MACOS:
             self.canvas.bind("<Button-2>", self._on_right_click)
+
+        # V1.0.9：菜单/气泡浮层可用性。macOS 无 PyObjC 时原生面板不可用，
+        # 退回 V1.0.8 的矢量画布实现（该场景下唯一的透明方案）。
+        self._panels_ok = not (IS_MACOS and not macos_overlay.AVAILABLE)
+        self._panel_pump_scheduled = False
 
         self.root.bind("<Control-Shift-Alt-Key-P>", lambda e: self._restore_from_hidden())
 
@@ -243,7 +334,7 @@ class DesktopPet:
     def _setup_transparent_window(self):
         self.root.overrideredirect(True)
         self.root.attributes("-topmost", True)
-        self.root.configure(bg=TRANSPARENT_BG)
+        self.root.configure(bg=CARD_BG or TRANSPARENT_BG)
 
         if PLATFORM == "windows":
 
@@ -301,6 +392,7 @@ class DesktopPet:
                                  checked=lambda item: self.follow_mode),
                 pystray.MenuItem("观察模式", self._toggle_watch_tray,
                                  checked=lambda item: self.watch_mode),
+                *self._extra_tray_items(),
                 pystray.Menu.SEPARATOR,
                 pystray.MenuItem("退出", self._quit_from_tray),
             )
@@ -315,6 +407,9 @@ class DesktopPet:
 
     def _post_to_main(self, fn):
         self._tk_queue.put(fn)
+
+    def _extra_tray_items(self):
+        return []
 
     def _drain_tk_queue(self):
         while True:
@@ -337,10 +432,12 @@ class DesktopPet:
     def _do_toggle_visibility(self):
         if self.root.state() == "withdrawn":
             self.root.deiconify()
+            self._overlay_show()
             self.animating = True
             self.root.after(16, self._game_loop)
         else:
             self.root.withdraw()
+            self._overlay_hide()
             self.animating = False
 
     def _set_random_preset(self, preset: str):
@@ -363,6 +460,14 @@ class DesktopPet:
             return
         self._closing = True
         self.animating = False
+        self._overlay_hide()
+        ov = self._overlay
+        if ov is not None:
+            try:
+                ov.close()
+            except Exception:
+                pass
+            self._overlay = None
 
         for aid in list(self._after_ids):
             try:
@@ -425,7 +530,8 @@ class DesktopPet:
                     cell = cell.resize(
                         (self.win_w, self.win_h), Image.LANCZOS
                     )
-                frame_list.append(ImageTk(cell))
+                frame_list.append(macos_overlay.make_source_photo(
+                    cell, keep_source=IS_MACOS))
             anim_frames[name] = frame_list
 
         gazes = self.config.get("gazes", [])
@@ -438,7 +544,8 @@ class DesktopPet:
             cell = sheet.crop((x, y, x + cell_w, y + cell_h))
             if self.scale != 1.0:
                 cell = cell.resize((self.win_w, self.win_h), Image.LANCZOS)
-            gaze_frames[name] = ImageTk(cell)
+            gaze_frames[name] = macos_overlay.make_source_photo(
+                cell, keep_source=IS_MACOS)
 
         return anim_frames, gaze_frames
 
@@ -558,14 +665,58 @@ class DesktopPet:
     def _frame_to_tk(self, frame):
         from PIL import Image as PILImage
         if PLATFORM != "windows":
+            # macOS/Linux：真 alpha 交给渲染层合成（去紫边阈值化是
+            # Windows -transparentcolor 色键方案的伴生步骤，真 alpha
+            # 下反而会毁掉软边）
             if frame.mode != "RGBA":
                 frame = frame.convert("RGBA")
-            return ImageTk(frame)
+            return macos_overlay.make_source_photo(
+                frame, keep_source=IS_MACOS)
         r, g, b, a = frame.split()
         magenta_bg = PILImage.new("RGB", frame.size, (255, 0, 255))
         rgb = PILImage.merge("RGB", (r, g, b))
         composite = PILImage.composite(rgb, magenta_bg, a)
-        return ImageTk(composite)
+        return macos_overlay.make_source_photo(composite, keep_source=False)
+
+    # ---- macOS 原生渲染层（BUG-01 修复）----
+
+    def _overlay_sync(self):
+        """每帧把当前帧与窗口位置推给原生渲染层（幂等，无变化即跳过）。"""
+        ov = self._overlay
+        if ov is None:
+            return
+        try:
+            ov.sync_position(self.root.winfo_x(), self.root.winfo_y())
+            if self._overlay_pil is not None:
+                ov.set_frame(self._overlay_pil)
+        except Exception:
+            logger.exception("原生渲染层同步失败")
+
+    def _overlay_event(self, kind, x, y, x_root, y_root):
+        """原生渲染层 → Tk：复用既有拖拽/菜单逻辑。"""
+        ev = _SynthEvent(x_root, y_root)
+        if kind == "press":
+            self._on_drag_start(ev)
+        elif kind == "drag":
+            self._on_drag_move(ev)
+        elif kind == "release":
+            self._on_drag_end(ev)
+        elif kind == "right":
+            self._on_right_click(ev)
+
+    def _overlay_hide(self):
+        if self._overlay is not None:
+            try:
+                self._overlay.hide()
+            except Exception:
+                pass
+
+    def _overlay_show(self):
+        if self._overlay is not None:
+            try:
+                self._overlay.show()
+            except Exception:
+                pass
 
     def _load_single_gif(self, name: str):
         from PIL import Image as PILImage
@@ -645,6 +796,7 @@ class DesktopPet:
             self._update_follow(dt)
 
         self._render_frame()
+        self._overlay_sync()
 
         if (self.current_anim in self._rotateable_states
                 and self.current_anim in self.gif_groups
@@ -653,15 +805,17 @@ class DesktopPet:
 
         if self._bubble_win:
             try:
-                px = self.root.winfo_x()
-                py = self.root.winfo_y()
-                bw = self._bubble_win.winfo_width()
-                bh = self._bubble_win.winfo_height()
-                bx = px + (self.win_w - bw) // 2
-                by = py - bh - 2
-                if by < 0:
-                    by = py + self.win_h + 2
-                self._bubble_win.geometry(f"+{bx}+{by}")
+                if hasattr(self._bubble_win, "size"):
+                    bw, bh = self._bubble_win.size()
+                else:
+                    bw = self._bubble_win.winfo_width()
+                    bh = self._bubble_win.winfo_height()
+                bx, by, _, _ = self._bubble_position(bw, bh)
+                if hasattr(self._bubble_win, "move"):
+                    if self._bubble_win.position() != (bx, by):
+                        self._bubble_win.move(bx, by)
+                else:
+                    self._bubble_win.geometry(f"+{bx}+{by}")
             except Exception:
                 pass
 
@@ -797,8 +951,42 @@ class DesktopPet:
         self._show_left_menu(event)
 
     def _show_left_menu(self, event):
+        """左键动画菜单：Windows 用 Apple 风格列表面板；macOS 系统原生
+        弹出菜单本就是 Apple 风格，继续沿用。"""
+        anims = self.config.get("animations", [])
+
+        if self._panels_ok and IS_WINDOWS:
+            rows, acts = [], []
+            for anim in anims:
+                name = anim.get("name", "")
+                label = anim.get("label", name)
+                rows.append((apple_ui.anim_icon(name), label))
+                acts.append(name)
+            rows.append(("sep", ""))
+            acts.append(None)
+            rows.append(("quit", "退出"))
+            acts.append("quit")
+
+            art = apple_ui.ListMenuArt(rows)
+            x, y = self._clamp_panel_pos(event.x_root - 6, event.y_root - 8,
+                                         *art.size)
+            panel = FloatPanel(self.root, art.image, x, y,
+                               on_click=lambda px, py:
+                                   self._list_menu_click(px, py, acts),
+                               on_move=lambda px, py:
+                                   self._list_menu_move(px, py, art),
+                               on_escape=self._close_left_menu,
+                               on_focus_out=self._close_left_menu,
+                               key=True)
+            panel.focus()
+            self._left_menu_panel = panel
+            self._left_menu_art = art
+            self._ensure_panel_pump()
+            return
+
         menu = tk.Menu(self.root, tearoff=0)
-        for anim in self.config.get("animations", []):
+        self._left_menu = menu
+        for anim in anims:
             name = anim.get("name", "")
             label = anim.get("label", name)
             menu.add_command(
@@ -812,42 +1000,196 @@ class DesktopPet:
         finally:
             menu.grab_release()
 
+    def _list_menu_click(self, x, y, acts):
+        art = getattr(self, "_left_menu_art", None)
+        panel = getattr(self, "_left_menu_panel", None)
+        if art is None or panel is None or not panel.alive():
+            return
+        idx = art.hit(x, y)
+        if idx is None:
+            self._close_left_menu()
+            return
+        act = acts[idx]
+        self._close_left_menu()
+        if act == "quit":
+            self._quit()
+        elif act is not None:
+            self._switch_anim(act, force=True)
+
+    def _list_menu_move(self, x, y, art):
+        panel = getattr(self, "_left_menu_panel", None)
+        if panel is None or not panel.alive():
+            return
+        idx = art.hit(x, y)
+        if idx == getattr(self, "_left_menu_hot", "sentinel"):
+            return
+        self._left_menu_hot = idx
+        panel.set_image(art.hover_images.get(idx, art.image)
+                        if idx is not None else art.image)
+
+    def _close_left_menu(self):
+        panel = getattr(self, "_left_menu_panel", None)
+        if panel is not None:
+            panel.close()
+        self._left_menu_panel = None
+        self._left_menu_art = None
+        self._left_menu_hot = None
+
+    def _clamp_panel_pos(self, x, y, w, h):
+        """把 (x, y) 尺寸 (w, h) 的面板钳制在宠物所在显示器工作区内。"""
+        wa_l, wa_t, wa_r, wa_b = self._monitor_workarea()
+        margin = 2
+        x = max(wa_l + margin, min(x, wa_r - w - margin))
+        y = max(wa_t + margin, min(y, wa_b - h - margin))
+        return x, y
+
+    def _ensure_panel_pump(self):
+        """开启原生面板事件泵（每 30ms 把 macOS 原生层入队的事件
+        在 Tk 主循环上下文里派发；Windows Tk 直调路径不经过队列）。"""
+        if self._panel_pump_scheduled:
+            return
+        self._panel_pump_scheduled = True
+        self.root.after(30, self._drain_panels)
+
+    def _drain_panels(self):
+        self._panel_pump_scheduled = False
+        alive = False
+        for attr in ("_radial_panel", "_left_menu_panel", "_bubble_win"):
+            p = getattr(self, attr, None)
+            if p is None or not hasattr(p, "pump_events"):
+                continue
+            try:
+                if p.alive():
+                    alive = True
+                    p.pump_events()
+            except Exception:
+                logger.exception("面板事件派发失败 (%s)", attr)
+        if alive:
+            self._ensure_panel_pump()
+
     def _hide_to_tray(self):
         self.animating = False
         self.root.withdraw()
+        self._overlay_hide()
         if getattr(self, "_tray", None) is None:
             logger.info("窗口已隐藏，按 Ctrl+Shift+Alt+P 恢复")
 
     def _restore_from_hidden(self):
         if self.root.state() == "withdrawn":
             self.root.deiconify()
+            self._overlay_show()
             self.animating = True
             self.root.after(16, self._game_loop)
             logger.info("窗口已恢复")
 
+    def _menu_items(self):
+        """右键扇形菜单项：(图标 key, 标签, 动作)。子类可扩展。"""
+        items = [("follow", "跟随", self._toggle_follow)]
+        if not self.config.get("gifMode"):
+            items.append(("watch", "观察", self._toggle_watch))
+        items += [
+            ("activity", "活动", self._cycle_behavior),
+            ("hide", "隐藏", self._hide_to_tray),
+            ("quit", "退出", self._quit),
+        ]
+        return items
+
+    def _on_menu_open(self):
+        """菜单打开前钩子（子类用于交互计时等）。"""
+
     def _on_right_click(self, event):
-        if getattr(self, "_radial_win", None) and self._radial_win.winfo_exists():
+        if getattr(self, "_radial_panel", None) and self._radial_panel.alive():
             self._close_radial()
             return
+        self._on_menu_open()
 
-        items = [
-            {"icon": "🎯", "label": "跟随", "act": self._toggle_follow},
-        ]
+        if not self._panels_ok:
+            self._show_radial_canvas(event)
+            return
 
-        if not self.config.get("gifMode"):
-            items.append({"icon": "👀", "label": "观察", "act": self._toggle_watch})
-        items += [
-            {"icon": "🎲", "label": "活动", "act": self._cycle_behavior},
-            {"icon": "🌙", "label": "隐藏", "act": self._hide_to_tray},
-            {"icon": "🚪", "label": "退出", "act": self._quit},
-        ]
+        items = self._menu_items()
+        art = apple_ui.RadialMenuArt([k for k, _, _ in items])
+        # 扇形圆心放在宠物顶边中点略上方（与旧版视觉一致）
+        px, py = self.root.winfo_x(), self.root.winfo_y()
+        pet_cx = px + self.win_w // 2
+        fan_cy_local = art.size[1] - art.btn_r - 20  # 画内扇形圆心 y
+        x = pet_cx - art.size[0] // 2
+        y = py - 43 - fan_cy_local
+        x, y = self._clamp_panel_pos(x, y, *art.size)
+
+        panel = FloatPanel(self.root, art.image, x, y,
+                           on_click=self._radial_on_click,
+                           on_move=self._radial_on_move,
+                           on_escape=self._close_radial,
+                           on_focus_out=self._close_radial,
+                           key=True)
+        panel.focus()
+        self._radial_panel = panel
+        self._radial_art = art
+        self._radial_actions = [act for _, _, act in items]
+        self._radial_hot = None
+        self._ensure_panel_pump()
+
+    def _radial_on_click(self, x, y):
+        art = getattr(self, "_radial_art", None)
+        panel = getattr(self, "_radial_panel", None)
+        if art is None or panel is None or not panel.alive():
+            return
+        idx = art.hit(x, y)
+        if idx is None:
+            self._close_radial()          # 点到面板空白处 → 收起
+            return
+        act = self._radial_actions[idx]
+        self._close_radial()
+        logger.info("radial 点击: %s", getattr(act, "__name__", act))
+        try:
+            act()
+        except Exception as e:
+            logger.exception(f"radial 菜单项执行失败: {e}")
+
+    def _radial_on_move(self, x, y):
+        art = getattr(self, "_radial_art", None)
+        panel = getattr(self, "_radial_panel", None)
+        if art is None or panel is None or not panel.alive():
+            return
+        idx = art.hit(x, y)
+        if idx == getattr(self, "_radial_hot", "sentinel"):
+            return
+        self._radial_hot = idx
+        if idx is None:
+            panel.set_image(art.image)
+        else:
+            panel.set_image(art.hover_images.get(idx, art.image))
+
+    def _close_radial(self):
+        panel = getattr(self, "_radial_panel", None)
+        if panel is not None:
+            panel.close()
+        self._radial_panel = None
+        self._radial_art = None
+        self._radial_actions = None
+        self._radial_hot = None
+        # 画布回退窗口一并清理
+        win = getattr(self, "_radial_win", None)
+        if win is not None:
+            try:
+                win.destroy()
+            except Exception:
+                pass
+            self._radial_win = None
+            self._radial_canvas = None
+
+    # ------------------------------------------------------------------
+    # 画布回退（macOS 无 PyObjC 时的 V1.0.8 行为；矢量元素不受 BUG-01 影响）
+    # ------------------------------------------------------------------
+    def _show_radial_canvas(self, event):
+        items = self._menu_items()
         n = len(items)
         radius = 70
         btn_r = 22
 
         start_a, end_a = 180, 360
         cx = self.win_w // 2
-        cy = -radius // 2
 
         win_size = (radius + btn_r) * 2 + 10
         win = tk.Toplevel(self.root)
@@ -883,13 +1225,11 @@ class DesktopPet:
             cv.create_oval(bx - btn_r, by - btn_r, bx + btn_r, by + btn_r,
                            fill="#FFFFFF", outline="#888888", width=2,
                            tags=f"btn{i}")
-            cv.create_text(bx, by - 4, text=it["icon"], font=("Segoe UI Emoji", 14),
-                           tags=f"btn{i}")
-            cv.create_text(bx, by + btn_r - 6, text=it["label"],
-                           font=("Microsoft YaHei", 8), fill="#444444",
-                           tags=f"btn{i}")
+            cv.create_text(bx, by - 4, text=apple_ui.MENU_LABELS.get(it[0], it[1]),
+                           font=("PingFang SC" if IS_MACOS else "Microsoft YaHei", 10),
+                           fill="#1D1D1F", tags=f"btn{i}")
             cv.tag_bind(f"btn{i}", "<Button-1>",
-                        lambda e, act=it["act"]: self._radial_click(act))
+                        lambda e, act=it[2]: self._radial_click(act))
 
         self._radial_win = win
         self._radial_canvas = cv
@@ -900,7 +1240,9 @@ class DesktopPet:
         win.focus_set()
 
     def _radial_hit_btn(self, event):
-        cv = self._radial_canvas
+        cv = getattr(self, "_radial_canvas", None)
+        if cv is None:
+            return False
         return "current" in cv.gettags(cv.find_closest(event.x, event.y))
 
     def _radial_click(self, act):
@@ -910,16 +1252,6 @@ class DesktopPet:
             act()
         except Exception as e:
             logger.exception(f"radial 菜单项执行失败: {e}")
-
-    def _close_radial(self):
-        win = getattr(self, "_radial_win", None)
-        if win and win.winfo_exists():
-            try:
-                win.destroy()
-            except Exception:
-                pass
-        self._radial_win = None
-        self._radial_canvas = None
 
     def _toggle_follow(self):
         self.follow_mode = not self.follow_mode
@@ -997,6 +1329,65 @@ class DesktopPet:
         )
         logger.info(f"AI Agent 状态监听已启动: status={status_path}, events={events_path}")
 
+    def _monitor_workarea(self):
+        try:
+            import ctypes
+
+            class _RECT(ctypes.Structure):
+                _fields_ = [("left", ctypes.c_long), ("top", ctypes.c_long),
+                            ("right", ctypes.c_long), ("bottom", ctypes.c_long)]
+
+            class _MONINFO(ctypes.Structure):
+                _fields_ = [("cbSize", ctypes.c_uint),
+                            ("rcMonitor", _RECT), ("rcWork", _RECT),
+                            ("dwFlags", ctypes.c_uint)]
+
+            user32 = ctypes.WinDLL("user32")
+            user32.GetAncestor.argtypes = [ctypes.c_void_p, ctypes.c_uint]
+            user32.GetAncestor.restype = ctypes.c_void_p
+            user32.MonitorFromWindow.argtypes = [ctypes.c_void_p, ctypes.c_uint]
+            user32.MonitorFromWindow.restype = ctypes.c_void_p
+            user32.GetMonitorInfoW.argtypes = [ctypes.c_void_p,
+                                               ctypes.POINTER(_MONINFO)]
+            user32.GetMonitorInfoW.restype = ctypes.c_int
+
+            hwnd = user32.GetAncestor(self.root.winfo_id(), 2)
+            hmon = user32.MonitorFromWindow(hwnd, 1)
+            mi = _MONINFO()
+            mi.cbSize = ctypes.sizeof(_MONINFO)
+            if hmon and user32.GetMonitorInfoW(hmon, ctypes.byref(mi)):
+                return (mi.rcWork.left, mi.rcWork.top,
+                        mi.rcWork.right, mi.rcWork.bottom)
+        except Exception:
+            pass
+        try:
+            return (0, 0, self.root.winfo_screenwidth(),
+                    self.root.winfo_screenheight())
+        except Exception:
+            return (0, 0, 1920, 1080)
+
+    def _bubble_position(self, total_w, total_h):
+        """计算气泡位置：优先宠物上方，放不下则下方；四边钳制在
+        宠物所在显示器的工作区内（避开任务栏），并返回箭头应指向的
+        宠物中心 x 坐标。"""
+        px = self.root.winfo_x()
+        py = self.root.winfo_y()
+        wa_l, wa_t, wa_r, wa_b = self._monitor_workarea()
+        margin = 4
+        x = px + (self.win_w - total_w) // 2
+        x = max(wa_l + margin, min(x, wa_r - total_w - margin))
+        y = py - total_h - 2
+        below = False
+        if y < wa_t + margin:
+            y = py + self.win_h + 2
+            below = True
+        if y + total_h > wa_b - margin:
+            y = wa_b - total_h - margin
+            if y < wa_t + margin:
+                y = wa_t + margin
+        pet_cx = px + self.win_w // 2
+        return x, y, below, pet_cx
+
     def _show_bubble(self, msg, state=""):
         self.root.after(0, self._do_show_bubble, msg, state)
 
@@ -1012,6 +1403,28 @@ class DesktopPet:
         if len(msg) > 60:
             msg = msg[:57] + "\u2026"
 
+        if not self._panels_ok:
+            self._do_show_bubble_canvas(msg, state)
+            return
+
+        art = apple_ui.BubbleArt(msg, state)
+        total_w, total_h = art.size
+        bubble_x, bubble_y, below, pet_cx = self._bubble_position(total_w,
+                                                                  total_h)
+        img = art.render(pet_cx - bubble_x,
+                         side="top" if below else "bottom")
+
+        panel = FloatPanel(self.root, img, bubble_x, bubble_y)
+        self._bubble_win = panel
+        self._bubble_alpha = 0.0
+        self._ensure_panel_pump()
+
+        self._bubble_fade_in(0)
+
+        self._bubble_timer = self.root.after(3000, self._hide_bubble)
+
+    def _do_show_bubble_canvas(self, msg, state=""):
+        """画布气泡回退（macOS 无 PyObjC；矢量元素不受 BUG-01 影响）。"""
         theme = _BUBBLE_THEMES.get(state, _BUBBLE_DEFAULT_THEME)
         bg_color = theme["bg"]
         border_color = theme["border"]
@@ -1025,7 +1438,8 @@ class DesktopPet:
         arrow_h = 7
 
         import tkinter.font as _tf
-        font = _tf.Font(family="Microsoft YaHei", size=10)
+        font = _tf.Font(family="PingFang SC" if IS_MACOS
+                        else "Microsoft YaHei", size=10)
         line_h = font.metrics("linespace")
 
         remain = msg
@@ -1049,13 +1463,7 @@ class DesktopPet:
         total_w = bw + shadow_dx + 4
         total_h = bh + arrow_h + shadow_dy + 4
 
-        px = self.root.winfo_x()
-        py = self.root.winfo_y()
-        bubble_x = px + (self.win_w - total_w) // 2
-        bubble_y = py - total_h - 2
-
-        if bubble_y < 0:
-            bubble_y = py + self.win_h + 2
+        bubble_x, bubble_y, below, pet_cx = self._bubble_position(total_w, total_h)
 
         bubble_win = tk.Toplevel(self.root)
         bubble_win.overrideredirect(True)
@@ -1082,9 +1490,12 @@ class DesktopPet:
 
         bx1, by1 = 2, 2
         bx2, by2 = bx1 + bw - 1, by1 + bh - 1
-        arrow_cx = (bx1 + bx2) // 2
+        arrow_cx = pet_cx - bubble_x
+        arrow_cx = max(bx1 + arrow_w + 2, min(arrow_cx, bx2 - arrow_w - 2))
+        arrow_side = "top" if below else "bottom"
 
-        bubble_pts = self._bubble_polygon(bx1, by1, bx2, by2, radius, arrow_w, arrow_h, arrow_cx)
+        bubble_pts = self._bubble_polygon(bx1, by1, bx2, by2, radius,
+                                          arrow_w, arrow_h, arrow_cx, arrow_side)
 
         for dx, dy, sc in [(3, 4, "#E0E0E0"), (2, 3, "#D5D5D5"), (1, 1, "#C8C8C8")]:
             shadow_pts = self._offset_pts(bubble_pts, dx, dy)
@@ -1097,7 +1508,7 @@ class DesktopPet:
                 (bx1 + bx2) // 2,
                 by1 + pad_y + i * line_h + line_h // 2,
                 text=line, anchor="center", fill=text_color,
-                font=("Microsoft YaHei", 10, "normal")
+                font=("PingFang SC" if IS_MACOS else "Microsoft YaHei", 10, "normal")
             )
 
         self._bubble_win = bubble_win
@@ -1108,7 +1519,7 @@ class DesktopPet:
         self._bubble_timer = self.root.after(3000, self._hide_bubble)
 
     @staticmethod
-    def _bubble_polygon(x1, y1, x2, y2, r, aw, ah, ax):
+    def _bubble_polygon(x1, y1, x2, y2, r, aw, ah, ax, side="bottom"):
         pts = []
 
         for a in range(180, 271, 15):
@@ -1118,6 +1529,10 @@ class DesktopPet:
 
         pts.append(x2 - r)
         pts.append(y1)
+
+        if side == "top":
+            aw2 = aw // 2
+            pts.extend([ax - aw2, y1, ax, y1 - ah, ax + aw2, y1])
 
         for a in range(270, 361, 15):
             rad = math.radians(a)
@@ -1132,8 +1547,9 @@ class DesktopPet:
             pts.append(x2 - r + r * math.cos(rad))
             pts.append(y2 - r + r * math.sin(rad))
 
-        aw2 = aw // 2
-        pts.extend([ax + aw2, y2, ax, y2 + ah, ax - aw2, y2])
+        if side == "bottom":
+            aw2 = aw // 2
+            pts.extend([ax + aw2, y2, ax, y2 + ah, ax - aw2, y2])
 
         for a in range(90, 181, 15):
             rad = math.radians(a)
@@ -1150,46 +1566,72 @@ class DesktopPet:
         return result
 
     def _bubble_fade_in(self, step):
-        if not self._bubble_win:
+        if not self._bubble_alive():
             return
         if step >= _BUBBLE_FADE_STEPS:
-            try:
-                self._bubble_win.attributes("-alpha", 1.0)
-            except Exception:
-                pass
+            self._bubble_set_alpha(255)
             self._bubble_alpha = 1.0
             return
         alpha = (step + 1) / _BUBBLE_FADE_STEPS
-        try:
-            self._bubble_win.attributes("-alpha", alpha)
-        except Exception:
-            pass
+        self._bubble_set_alpha(int(alpha * 255))
         self._bubble_alpha = alpha
         self.root.after(_BUBBLE_FADE_INTERVAL, self._bubble_fade_in, step + 1)
 
     def _bubble_fade_out(self, step):
-        if not self._bubble_win:
+        if not self._bubble_alive():
             return
         if step >= _BUBBLE_FADE_STEPS:
             self._hide_bubble_immediate()
             return
         alpha = 1.0 - (step + 1) / _BUBBLE_FADE_STEPS
-        try:
-            self._bubble_win.attributes("-alpha", alpha)
-        except Exception:
-            pass
+        self._bubble_set_alpha(int(alpha * 255))
         self.root.after(_BUBBLE_FADE_INTERVAL, self._bubble_fade_out, step + 1)
 
+    def _bubble_alive(self):
+        win = self._bubble_win
+        if not win:
+            return False
+        if hasattr(win, "alive"):
+            return win.alive()
+        try:
+            return bool(win.winfo_exists())
+        except Exception:
+            return False
+
+    def _bubble_set_alpha(self, a255):
+        win = self._bubble_win
+        if not win:
+            return
+        if hasattr(win, "set_alpha"):
+            win.set_alpha(a255)
+        else:
+            try:
+                win.attributes("-alpha", a255 / 255.0)
+            except Exception:
+                pass
+
     def _hide_bubble(self):
-        self._bubble_timer = None
+        # 取消尚未触发的自动关闭定时器：手动提前关闭时若只置空句柄，
+        # 定时器稍后仍会触发并把「下一个」气泡误当超时气泡淡出销毁
+        # （V1.0.9 测试 M7→M8 序列实测暴露的潜在缺陷）。
+        if self._bubble_timer:
+            try:
+                self.root.after_cancel(self._bubble_timer)
+            except Exception:
+                pass
+            self._bubble_timer = None
         if self._bubble_win:
             self._bubble_fade_out(0)
         self._bubble_active = False
 
     def _hide_bubble_immediate(self):
         if self._bubble_win:
+            win = self._bubble_win
             try:
-                self._bubble_win.destroy()
+                if hasattr(win, "close"):
+                    win.close()
+                else:
+                    win.destroy()
             except Exception:
                 pass
             self._bubble_win = None

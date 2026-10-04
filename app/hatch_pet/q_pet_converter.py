@@ -231,46 +231,94 @@ class QPetConverter:
         ref_image,
         anim_states: list,
         num_frames: int = 8,
+        base_image=None,
+        progress_cb=None,
     ) -> dict:
-        frames = {}
+        """按动画状态生成帧序列（PNG bytes 列表）。
 
-        base_chibi = self.convert_to_chibi(ref_image)
+        base_image: 已生成的 Q 版基础帧（PIL Image），传入则跳过重复转换；
+        progress_cb: 可选 callback(完成比例 0~1, 当前状态名)，用于进度条。
+        """
         Image = self._get_pil()
-        base_img = Image.open(BytesIO(base_chibi))
 
-        for state in anim_states:
+        if base_image is None:
+            base_chibi = self.convert_to_chibi(ref_image)
+            base_img = Image.open(BytesIO(base_chibi))
+        else:
+            base_img = base_image
+
+        frames = {}
+        total = max(1, len(anim_states))
+
+        for s_i, state in enumerate(anim_states):
             state_name = state.get("name", "idle")
             state_frames = []
 
             for i in range(num_frames):
-
                 frame = base_img.copy()
 
                 if "running" in state_name:
-
                     from PIL import ImageChops
                     offset = int(3 * (1 if i % 2 == 0 else -1))
                     frame = ImageChops.offset(frame, offset, 0)
 
                 elif state_name == "jumping":
-
-                    from PIL import ImageChops
-                    offset_y = int(-8 if i < num_frames // 2 else 8)
-                    frame = ImageChops.offset(frame, 0, offset_y)
+                    import math
+                    n = max(1, num_frames - 1)
+                    offset_y = int(-10 * math.sin(math.pi * i / n))
+                    frame = self._shift_vertical(frame, offset_y)
 
                 elif state_name == "waving":
-
                     from PIL import ImageChops
                     offset = int(2 * (i % 3 - 1))
                     frame = ImageChops.offset(frame, offset, 0)
+
+                elif state_name in ("failed", "review"):
+                    # 叹气/审阅：轻微低头 + 呼吸
+                    import math
+                    k = 1.0 + 0.010 * math.sin(2 * math.pi * i / num_frames)
+                    frame = self._breathe(frame, k)
+                    if state_name == "failed" and i % 2 == 0:
+                        from PIL import ImageChops
+                        frame = ImageChops.offset(frame, 0, 2)
+
+                else:
+                    # 待机/等待等：呼吸起伏（轻微纵向缩放，脚底锚定）
+                    import math
+                    k = 1.0 + 0.015 * math.sin(2 * math.pi * i / num_frames)
+                    frame = self._breathe(frame, k)
 
                 buf = BytesIO()
                 frame.save(buf, format="PNG")
                 state_frames.append(buf.getvalue())
 
             frames[state_name] = state_frames
+            if progress_cb is not None:
+                try:
+                    progress_cb((s_i + 1) / total, state_name)
+                except Exception:
+                    pass
 
         return frames
+
+    def _breathe(self, frame, k: float):
+        """呼吸变换：纵向轻微缩放，脚底（图像底边）锚定"""
+        Image = self._get_pil()
+        w, h = frame.size
+        h2 = max(2, int(h * k))
+        if h2 == h:
+            return frame
+        resized = frame.resize((w, h2), Image.LANCZOS)
+        canvas = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        canvas.paste(resized, (0, h - h2), resized)
+        return canvas
+
+    def _shift_vertical(self, frame, dy: int):
+        Image = self._get_pil()
+        w, h = frame.size
+        canvas = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        canvas.paste(frame, (0, dy), frame)
+        return canvas
 
 class AIImageGenerator:
 

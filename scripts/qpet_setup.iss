@@ -1,7 +1,7 @@
 ﻿; QPet 桌面宠物 安装脚本 (Inno Setup)
 #define MyAppName "Vivian 桌面宠物"
 #define MyAppNameEn "Vivian Desktop Pet"
-#define MyAppVersion "1.0.2"
+#define MyAppVersion "1.0.9"
 #define MyAppExeName "QPet.exe"
 
 [Setup]
